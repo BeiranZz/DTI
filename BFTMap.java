@@ -69,14 +69,8 @@ public class BFTMap<K, V> implements Map<K, V> {
         byte[] rep;
         try {
             BFTMapMessage<K,V> request = new BFTMapMessage<>();
-        	String[] k = value.toString().split("\\|");
-        	
-        	if(k[2].equals("coin")) {
-        		request.setType(BFTMapRequestType.MINT);
-        	}else if(k[4].equals("spend")){
-        		request.setType(BFTMapRequestType.SPEND);
-        	}
-        	
+            request.setType(BFTMapRequestType.PUT);
+            
             request.setKey(key);
             request.setValue(value);
 
@@ -98,7 +92,142 @@ public class BFTMap<K, V> implements Map<K, V> {
             return null;
         }
     }
+    
+    /**
+    *
+    * @param key The key associated to the value
+    * @param value Value to be added to the map
+    */
+   public V mint(K key, V value) {
+	   byte[] rep;
+       try {
+    	   BFTMapMessage<K,V> request = new BFTMapMessage<>();
+       	
+    	   request.setType(BFTMapRequestType.MINT);
 
+           request.setKey(key);
+           request.setValue(value);
+
+           //invokes BFT-SMaRt
+           rep = serviceProxy.invokeOrdered(BFTMapMessage.toBytes(request));
+       } catch (IOException e) {
+           logger.error("Failed to send PUT request");
+           return null;
+       }
+
+       if (rep.length == 0) {
+           return null;
+       }
+       try {
+           BFTMapMessage<K,V> response = BFTMapMessage.fromBytes(rep);
+           return response.getValue();
+       } catch (ClassNotFoundException | IOException ex) {
+           logger.error("Failed to deserialized response of PUT request");
+           return null;
+       }
+   }
+   
+   /**
+   *
+   * @param key The key associated to the value
+   * @param value Value to be added to the map
+   */
+   public V mint_nft(K key, V value) {
+	   byte[] rep;
+       try {
+    	   BFTMapMessage<K,V> request = new BFTMapMessage<>();
+      	
+    	   request.setType(BFTMapRequestType.MINT_NFT);
+
+    	   request.setKey(key);
+    	   request.setValue(value);
+
+    	   //invokes BFT-SMaRt
+    	   rep = serviceProxy.invokeOrdered(BFTMapMessage.toBytes(request));
+       } catch (IOException e) {
+    	   logger.error("Failed to send PUT request");
+    	   return null;
+       }
+
+       if (rep.length == 0) {
+    	   return null;
+       }
+       try {
+    	   BFTMapMessage<K,V> response = BFTMapMessage.fromBytes(rep);
+    	   return response.getValue();
+       } catch (ClassNotFoundException | IOException ex) {
+    	   logger.error("Failed to deserialized response of PUT request");
+    	   return null;
+       }
+   }
+   
+   /**
+   *
+   * @param key The key associated to the value
+   * @param value Value to be added to the map
+   */
+   public V spend(K key, V value) {
+	   byte[] rep;
+       try {
+    	   BFTMapMessage<K,V> request = new BFTMapMessage<>();
+      	
+    	   request.setType(BFTMapRequestType.SPEND);
+
+    	   request.setKey(key);
+    	   request.setValue(value);
+
+    	   //invokes BFT-SMaRt
+    	   rep = serviceProxy.invokeOrdered(BFTMapMessage.toBytes(request));
+       } catch (IOException e) {
+    	   logger.error("Failed to send PUT request");
+    	   return null;
+       }
+
+       if (rep.length == 0) {
+    	   return null;
+       }
+       try {
+    	   BFTMapMessage<K,V> response = BFTMapMessage.fromBytes(rep);
+    	   return response.getValue();
+       } catch (ClassNotFoundException | IOException ex) {
+    	   logger.error("Failed to deserialized response of PUT request");
+    	   return null;
+       }
+   }
+
+   /**
+   *
+   * @param key The key associated to the value
+   * @param value Value to be added to the map
+   */
+   public V request_nft_transfer(K key, V value) {
+	   byte[] rep;
+       try {
+    	   BFTMapMessage<K,V> request = new BFTMapMessage<>();
+      	
+    	   request.setType(BFTMapRequestType.REQUEST_NFT_TRANSFER);
+
+    	   request.setKey(key);
+    	   request.setValue(value);
+
+    	   //invokes BFT-SMaRt
+    	   rep = serviceProxy.invokeOrdered(BFTMapMessage.toBytes(request));
+       } catch (IOException e) {
+    	   logger.error("Failed to send PUT request");
+    	   return null;
+       }
+
+       if (rep.length == 0) {
+    	   return null;
+       }
+       try {
+    	   BFTMapMessage<K,V> response = BFTMapMessage.fromBytes(rep);
+    	   return response.getValue();
+       } catch (ClassNotFoundException | IOException ex) {
+    	   logger.error("Failed to deserialized response of PUT request");
+    	   return null;
+       }
+   }
     @Override
     public int size() {
         throw new UnsupportedOperationException("You are supposed to implement this method :)");

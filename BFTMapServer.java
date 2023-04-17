@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
@@ -40,9 +41,7 @@ public class BFTMapServer<K, V> extends DefaultSingleRecoverable {
             BFTMapMessage<K,V> response = new BFTMapMessage<>();
             BFTMapMessage<K,V> request = BFTMapMessage.fromBytes(command);
             BFTMapRequestType cmd = request.getType();
-            
-            Random random = new Random();
-
+           
             logger.info("Ordered execution of a {} request from {}", cmd, msgCtx.getSender());
 
             switch (cmd) {
@@ -115,9 +114,7 @@ public class BFTMapServer<K, V> extends DefaultSingleRecoverable {
 
                 		if (sender_value > 0) {
                 			V sender_coin = (V) (s[0] + "|" + sender_value + "|" + "coin"); 
-                    		
-                            int random_key = random.nextInt(10000);
-                            
+                    		                            
                     		V newCoin = replicaMap.put(key, sender_coin);
 
                     		if(newCoin != null) {
@@ -133,8 +130,107 @@ public class BFTMapServer<K, V> extends DefaultSingleRecoverable {
                         response.setValue(2);
                         return BFTMapMessage.toBytes(response);
                 	}
+                	
+                case MINT_NFT:
+                    String[] nft_values = request.getValue().toString().split("\\|");
+                    
+                    boolean nft_exists = false;
+                      
+                    for(Map.Entry<K,V> nft : replicaMap.entrySet()){
+                        V nftId = nft.getValue();
+                        
+                        String[] values = ((String) nftId).split("\\|");
+                        
+                        if(isValidIndex(values, 3) && values[3].equals("nft")){
+                            if(nft_values[1].equals(values[1])){
+                            	nft_exists = true;
+                            }
+                        }
+                    }
+                    if(nft_exists){
+                    	
+                    	response.setValue(0);
+                        return BFTMapMessage.toBytes(response);
+                        
+                    }else {
+                    	
+                    	V n = replicaMap.put(request.getKey(), request.getValue());
+                        if(n != null) {
+                            response.setValue(n);
+                        }else {
+                            response.setValue(request.getKey());
+                        }
+                        return BFTMapMessage.toBytes(response);
+                    }
+                    
+                case REQUEST_NFT_TRANSFER:
+                    String[] r = request.getValue().toString().split("\\|");
+                    String clientId = r[0];
+                    
+                    V nft_id = replicaMap.get(Integer.parseInt(r[1]));
+                    String [] nft_val = nft_id.toString().split("\\|");
+                    String UserId = nft_val[0];
+                    
+                    //check if client owns NFT
+                    if (clientId.equals(UserId)){
+                        response.setValue(0);
+                        return BFTMapMessage.toBytes(response);
+                    }
+
+                    String[] nft_coins = r[2].split(",");
+                    int sumCoins = 0;
+                    
+                    for (String coin : nft_coins) {
+                		
+                		try {
+                			String [] info = replicaMap.get(Integer.parseInt(coin)).toString().split("\\|");          			
+
+                			// Check if the coin belongs to the client
+                			if (Integer.parseInt(r[0]) != Integer.parseInt(info[0])) {
+                            	
+                				response.setValue(1); 
+                				return BFTMapMessage.toBytes(response);
+                            	
+                			}else {
+                				sumCoins += Integer.parseInt(info[1]);
+                			}
+                		} catch(NullPointerException e) {
+                			response.setValue(1); 
+            				return BFTMapMessage.toBytes(response);
+              
+                		}
+                	}
+                    
+
+                    //Check if client has already 1 request
+                    for (Map.Entry<K,V> nft : replicaMap.entrySet()){
+                        String[] nft_info = nft.getValue().toString().split("\\|");
+                        String UserID = nft_info[0];
+                        System.out.println(UserID);
+                        
+                        if(isValidIndex(nft_info, 5) && nft_info[5].equals("nft_request")){
+                        	if(clientId.equals(UserID)) {
+                        		response.setValue("3");
+                                return BFTMapMessage.toBytes(response);
+                        	}                    
+                    }
+                    System.out.println(sumCoins);
+                    if (sumCoins >= Integer.parseInt(r[3])){
+                    	
+                        V v = replicaMap.put(request.getKey(), request.getValue());
+                        if(v != null) {
+                            response.setValue(v);
+                        }else {
+                        	response.setValue(request.getKey());
+                        }
+                        
+                        return BFTMapMessage.toBytes(response);
+                    }
+                    response.setValue("2");
+                    return BFTMapMessage.toBytes(response);
+                }
             }
-     
+            
 
             return null;
         }catch (IOException | ClassNotFoundException ex) {
@@ -197,6 +293,15 @@ public class BFTMapServer<K, V> extends DefaultSingleRecoverable {
         } catch (ClassNotFoundException | IOException ex) {
             ex.printStackTrace(); //debug instruction
         }
+    }
+    
+    public static boolean isValidIndex(String[] arr, int index) {
+        try {
+        	String i = arr[index];
+        } catch (IndexOutOfBoundsException e) {
+            return false;
+        }
+        return true;
     }
 
 }

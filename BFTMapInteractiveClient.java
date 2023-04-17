@@ -91,9 +91,9 @@ public class BFTMapInteractiveClient {
                 String m = clientId + "|" + value + "|" + "coin";
 
                 
-                bftMap.put(random_key, m);
+                String result = bftMap.mint(random_key, m).toString();
 
-                System.out.println("\nCoin " + random_key +  " created successfully!");
+                System.out.println("\nCoin " + result +  " created successfully!");
                 random_key=random.nextInt(10000);
                 
             } else if (cmd.equalsIgnoreCase("SPEND")) {
@@ -132,7 +132,7 @@ public class BFTMapInteractiveClient {
             	}
                 String s = clientId + "|" + receiver + "|" + value + "|" + coins + "|" + "spend"; 
                 
-                String a = bftMap.put(random_key, s).toString();
+                String a = bftMap.spend(random_key, s).toString();
                 
             	random_key = random.nextInt(10000);
                 
@@ -147,6 +147,112 @@ public class BFTMapInteractiveClient {
                 }
             	
 
+            } else if (cmd.equalsIgnoreCase("MY_NFTS")) {
+                Set<Integer> keys = bftMap.keySet();
+                System.out.println("Your NFTS:");
+
+                for (int key : keys) {
+            		String nft = (String) bftMap.get(key);
+                	String[] values = nft.split("\\|");
+                	if(values[0].equals(Integer.toString(clientId)) && values[3].equals("nft")) {
+                		String name = values[1];
+                		String uri = values[2];
+                		System.out.println("ID " + key + " | NAME: " + name + " | URI: " + uri );
+                	}
+                    
+                }
+                
+            }else if (cmd.equalsIgnoreCase("MINT_NFT")){
+                
+                String name = console.readLine("Enter a name for the nft: ");
+
+                String uri = console.readLine("Enter a URI for the nft: ");
+                String n = clientId + "|" + name +"|" + uri + "|" + "nft"; 
+
+                String result = bftMap.mint_nft(random_key, n).toString();
+
+                if (result.equals("0")){
+                	System.out.println("There is already a NFT with that name!");
+                }else {
+                	System.out.println("\nNFT " + result +  " created successfully!");
+                }
+                random_key=random.nextInt(10000);
+
+            } else if (cmd.equalsIgnoreCase("REQUEST_NFT_TRANSFER")){
+            	
+            	System.out.println("All available NFTS:");
+                Set<Integer> keys = bftMap.keySet();
+                for (int key : keys) {
+                    String nft = (String) bftMap.get(key);
+                    String[] values = nft.split("\\|");
+                    if (values[0].equals(Integer.toString(clientId)) || !values[3].equals("nft")) {
+                        continue;
+                    }
+                    System.out.println("NFT ID: " + key + "| NAME: " + values[1] +"| URI: " + values[2]);
+                }
+                
+                String nft = console.readLine("Enter the id of the nft you want to offer: ");
+                
+                String value = console.readLine("Enter the value you want to pay for the NFT: ");
+                              
+                String coins = console.readLine("Enter the coin ids that you are going to use (Put a comma in between every id): ");
+                
+                String validity = console.readLine("Enter the confirmation validity: ");
+
+                String request = clientId + "|" + nft + "|" + coins + "|" + value + "|" + validity + "|" + "nft_request"; 
+                
+                String s = bftMap.request_nft_transfer(random_key, request).toString();
+                random_key = random.nextInt(10000);
+
+                if (s.equals("0")){
+                	System.out.println("Can't request on your own NFT!");
+                }else if (s.equals("1")){
+                	System.out.println("You put coins that not belong to you!");
+                }else if (s.equals("2")){
+                	System.out.println("You don't have enought value!");
+                }else if (s.equals("3")){
+                	System.out.println("You already have a request!");
+                }else {
+                	System.out.println("NFT Request " + s + " confirmed!");
+                }
+
+            } else if (cmd.equalsIgnoreCase("MY_NFT_REQUESTS")) {
+                 Set<Integer> keys = bftMap.keySet();
+                 System.out.println("Your NFT requests: ");
+            	 String request;
+            	 String nfts = "";
+            	 boolean hasNFTS = false;
+            	 
+            	 for (int m : keys) {
+                	 request = (String) bftMap.get(m);
+                     String[] requests = request.split("\\|");
+                     if(isValidIndex(requests,3) && requests[3].equals("nft")) {
+                    	 if(requests[0].equals(Integer.toString(clientId))){
+                    		 hasNFTS = true;
+                    		 nfts += requests[1] + ",";
+                    	 }
+                     }
+            	 }
+                 String [] nfts_list = nfts.split(",");
+                 for (int key : keys) {
+                	 request = (String) bftMap.get(key);
+                     String[] requests = request.split("\\|");
+
+                     if (hasNFTS && isValidIndex(requests,5) && requests[5].equals("nft_request")) {
+                    	 String nftId = requests[1];
+                         String[] info = ((String) bftMap.get(Integer.parseInt(requests[1]))).split("\\|");
+                         String name = info[1];
+                         String uri = info[2];   
+                         String value = requests[3];
+                         
+                         for(String nft : nfts_list) {
+                        	 if(nft.equals(name)) {
+                        		 System.out.println("ISSSUER: " + requests[0] + " | " +"NFT ID: " + nftId + " | " + "NFT NAME: " + name + " | " + "NFT URI: " + uri + " | " + "VALUE: " + value + " | " + "VALIDITY: " + requests[4]);
+                        	 }
+                         }
+                     }
+                 }
+                
             } else if (cmd.equalsIgnoreCase("EXIT")) {
 
                 System.out.println("\tEXIT: Bye bye!\n");
@@ -156,6 +262,15 @@ public class BFTMapInteractiveClient {
                 System.out.println("\tInvalid command :P\n");
             }
         }
+    }
+    
+    public static boolean isValidIndex(String[] arr, int index) {
+        try {
+        	String i = arr[index];
+        } catch (IndexOutOfBoundsException e) {
+            return false;
+        }
+        return true;
     }
 
 }
