@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -39,6 +40,8 @@ public class BFTMapServer<K, V> extends DefaultSingleRecoverable {
             BFTMapMessage<K,V> response = new BFTMapMessage<>();
             BFTMapMessage<K,V> request = BFTMapMessage.fromBytes(command);
             BFTMapRequestType cmd = request.getType();
+            
+            Random random = new Random();
 
             logger.info("Ordered execution of a {} request from {}", cmd, msgCtx.getSender());
 
@@ -63,6 +66,71 @@ public class BFTMapServer<K, V> extends DefaultSingleRecoverable {
                         }else {
                         	response.setValue(request.getKey());
                         }
+                        return BFTMapMessage.toBytes(response);
+                	}
+                	
+                case SPEND:
+                	String[] s = request.getValue().toString().split("\\|");
+                	String [] coins = s[3].toString().split(",");
+
+                	int sum_coins = 0;
+
+                	for (String coin : coins) {
+                		
+                		try {
+                			String [] info = replicaMap.get(Integer.parseInt(coin)).toString().split("\\|");          			
+
+                			// Check if the coin belongs to the client
+                			if (Integer.parseInt(s[0]) != Integer.parseInt(info[0])) {
+                            	
+                				response.setValue(0); 
+                				return BFTMapMessage.toBytes(response);
+                            	
+                			}else {
+                				sum_coins += Integer.parseInt(info[1]);
+                			}
+                		} catch(NullPointerException e) {
+                			response.setValue(1); 
+            				return BFTMapMessage.toBytes(response);
+              
+                		}
+                	}
+                	
+                	if(sum_coins >= Integer.parseInt(s[2])) {
+
+                		//create new coin
+                		V r_coin = (V) (s[1] + "|" + s[2] + "|" + "coin");
+                		replicaMap.put(request.getKey(), r_coin);
+
+                        //remove all coins used in the transaction
+                		for (String transaction_coins : coins) {
+                			V removed = replicaMap.remove(Integer.parseInt(transaction_coins));
+                        }
+
+                        //create new coin for the sender
+                		
+                		int sender_value = sum_coins - Integer.parseInt(s[2]);
+                		
+                		K key = (K) Integer.valueOf(Integer.valueOf(request.getKey().toString())+1000);                		
+
+                		if (sender_value > 0) {
+                			V sender_coin = (V) (s[0] + "|" + sender_value + "|" + "coin"); 
+                    		
+                            int random_key = random.nextInt(10000);
+                            
+                    		V newCoin = replicaMap.put(key, sender_coin);
+
+                    		if(newCoin != null) {
+                                response.setValue(newCoin);
+                            }else {
+                            	response.setValue(key);
+                            }
+                		}
+                		response.setValue(key);
+                        return BFTMapMessage.toBytes(response);
+                		
+                	}else {
+                        response.setValue(2);
                         return BFTMapMessage.toBytes(response);
                 	}
             }

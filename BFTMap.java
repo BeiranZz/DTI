@@ -73,6 +73,8 @@ public class BFTMap<K, V> implements Map<K, V> {
         	
         	if(k[2].equals("coin")) {
         		request.setType(BFTMapRequestType.MINT);
+        	}else if(k[4].equals("spend")){
+        		request.setType(BFTMapRequestType.SPEND);
         	}
         	
             request.setKey(key);

@@ -12,7 +12,7 @@ public class BFTMapInteractiveClient {
 
     public static void main(String[] args) throws IOException {
         int clientId = (args.length > 0) ? Integer.parseInt(args[0]) : 1001;
-        BFTMap<Integer, String> bftMap = new BFTMap<>(clientId);
+        BFTMap<Integer, Object> bftMap = new BFTMap<>(clientId);
         
         Random random = new Random();
         int random_key = random.nextInt(10000);
@@ -60,7 +60,7 @@ public class BFTMapInteractiveClient {
                 }
 
                 //invokes the op on the servers
-                String value = bftMap.get(key);
+                String value = (String) bftMap.get(key);
 
                 System.out.println("\nValue associated with " + key + ": " + value + "\n");
 
@@ -70,7 +70,7 @@ public class BFTMapInteractiveClient {
                 System.out.println("Your coins: ");
                 for (Integer key : keys) {
                 	String coin = (String) bftMap.get(key);
-                    coin = bftMap.get(key);
+                    coin = (String) bftMap.get(key);
                     String[] values = coin.split("\\|");
                     if (values[0].equals(Integer.toString(clientId)) && values[2].equals("coin")) {
                         System.out.println("Coin: " + key + " | Value: " + values[1]);
@@ -79,26 +79,73 @@ public class BFTMapInteractiveClient {
 
             } else if (cmd.equalsIgnoreCase("MINT")) {
             	
-            	int key;
+            	int value;
                 try {
-                	key = Integer.parseInt(console.readLine("Enter a numeric key: "));
+                	value = Integer.parseInt(console.readLine("Enter the value for the coin: "));
           
                 } catch (NumberFormatException e) {
                 	System.out.println("\\tThe key is supposed to be an integer!\\n"); 
                 	continue;
                 }
                 
-                String s = clientId + "|" + key + "|" + "coin";
+                String m = clientId + "|" + value + "|" + "coin";
 
                 
-                bftMap.put(random_key, s);
+                bftMap.put(random_key, m);
 
                 System.out.println("\nCoin " + random_key +  " created successfully!");
                 random_key=random.nextInt(10000);
                 
-            } else if (cmd.equalsIgnoreCase("SIZE")) {
-
-                System.out.println("\tYou are supposed to implement this command :)\n");
+            } else if (cmd.equalsIgnoreCase("SPEND")) {
+            	int receiver;
+                try {
+                	receiver = Integer.parseInt(console.readLine("Enter the receiver ID: "));
+                } catch (NumberFormatException e) {
+                	System.out.println("The ID is supposed to be an integer!"); 
+                	continue;
+                }
+                
+                int value;
+                try {
+                	value = Integer.parseInt(console.readLine("Enter the value to transfer: "));
+                } catch (NumberFormatException e) {
+                	System.out.println("The value is supposed to be an integer!"); 
+                	continue;
+                }
+                
+                String coins;
+                try {
+                	coins = console.readLine("Enter the coin ids (Put a comma in between every id): ");
+                } catch (NumberFormatException e) {
+                	System.out.println("Please enter the values separated by a comma!"); 
+                	continue;
+                }
+                String[] all_coins = coins.split(",");
+                for (String coin : all_coins) {
+            		try {
+            			//Check if every id is an integer
+                        Integer.parseInt(coin);
+                    } catch (NumberFormatException e) {
+                    	System.out.println("Coin IDs are supposed to be integers!");
+                    	continue;
+                    }             	
+            	}
+                String s = clientId + "|" + receiver + "|" + value + "|" + coins + "|" + "spend"; 
+                
+                String a = bftMap.put(random_key, s).toString();
+                
+            	random_key = random.nextInt(10000);
+                
+                if(a.equals("0")) {
+                    System.out.println("You're not the onwer of this coin!");
+                }else if(a.equals("1")) {
+                    System.out.println("This coin doesn't exist!");
+                }else if(a.equals("2")) {
+                    System.out.println("You don't have enought funds!");
+                }else {
+                	System.out.println("Transfer " + a + " successful!");
+                }
+            	
 
             } else if (cmd.equalsIgnoreCase("EXIT")) {
 
