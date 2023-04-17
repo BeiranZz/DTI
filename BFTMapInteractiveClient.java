@@ -26,7 +26,7 @@ public class BFTMapInteractiveClient {
         System.out.println("\tMY_NFTS: List of all client NFTS");
         System.out.println("\tMINT_NFT: Create a new NFT");
         System.out.println("\tREQUEST_NFT_TRANSFER: Create a request transfer for nft with an offered value and confirmation validity");
-        System.out.println("\tCANCEL_NFT_REQUEST: Cancel a nft transfer request");
+        System.out.println("\tCANCEL_REQUEST_NFT_TRANSFER: Cancel a nft transfer request");
         System.out.println("\tMY_NFT_REQUESTS: List of all NFT requests");
         System.out.println("\tPROCESS_NFT_TRANSFER: Accept or reject a NFT transfer");
         System.out.println("\tEXIT: Terminate this client\n");
@@ -92,9 +92,14 @@ public class BFTMapInteractiveClient {
 
                 
                 String result = bftMap.mint(random_key, m).toString();
-
-                System.out.println("\nCoin " + result +  " created successfully!");
                 random_key=random.nextInt(10000);
+                
+                if(result.equals("0")) {
+                    System.out.println("You don't have permissions to mint a coin!");
+                }else {
+                    System.out.println("\nCoin " + result +  " created successfully!");
+                }
+   
                 
             } else if (cmd.equalsIgnoreCase("SPEND")) {
             	int receiver;
@@ -154,7 +159,7 @@ public class BFTMapInteractiveClient {
                 for (int key : keys) {
             		String nft = (String) bftMap.get(key);
                 	String[] values = nft.split("\\|");
-                	if(values[0].equals(Integer.toString(clientId)) && values[3].equals("nft")) {
+                	if(values[0].equals(Integer.toString(clientId)) && isValidIndex(values,3) && values[3].equals("nft")) {
                 		String name = values[1];
                 		String uri = values[2];
                 		System.out.println("ID " + key + " | NAME: " + name + " | URI: " + uri );
@@ -185,9 +190,18 @@ public class BFTMapInteractiveClient {
                 for (int key : keys) {
                     String nft = (String) bftMap.get(key);
                     String[] values = nft.split("\\|");
-                    if (values[0].equals(Integer.toString(clientId)) || !values[3].equals("nft")) {
+                    if (values[0].equals(Integer.toString(clientId))) {
                         continue;
                     }
+                    
+                    if(!isValidIndex(values,3)){
+                    	continue;
+                    }
+                    
+                    if(isValidIndex(values,3) && !values[3].equals("nft")){
+                    	continue;
+                    }
+                    
                     System.out.println("NFT ID: " + key + "| NAME: " + values[1] +"| URI: " + values[2]);
                 }
                 
@@ -212,6 +226,8 @@ public class BFTMapInteractiveClient {
                 	System.out.println("You don't have enought value!");
                 }else if (s.equals("3")){
                 	System.out.println("You already have a request!");
+                }else if (s.equals("4")){
+                	System.out.println("The NFT ID doesn't exist!");
                 }else {
                 	System.out.println("NFT Request " + s + " confirmed!");
                 }
@@ -247,11 +263,60 @@ public class BFTMapInteractiveClient {
                          
                          for(String nft : nfts_list) {
                         	 if(nft.equals(name)) {
-                        		 System.out.println("ISSSUER: " + requests[0] + " | " +"NFT ID: " + nftId + " | " + "NFT NAME: " + name + " | " + "NFT URI: " + uri + " | " + "VALUE: " + value + " | " + "VALIDITY: " + requests[4]);
+                        		 System.out.println("ISSUER: " + requests[0] + " | " +"NFT ID: " + nftId + " | " + "NFT NAME: " + name + " | " + "NFT URI: " + uri + " | " + "VALUE: " + value + " | " + "VALIDITY: " + requests[4]);
                         	 }
                          }
                      }
                  }
+                
+            } else if (cmd.equalsIgnoreCase("CANCEL_REQUEST_NFT_TRANSFER")){
+                String nftId = console.readLine("Enter the nft id you want to cancel the request: ");
+                String cancelRequest = clientId + "|" + nftId + "|" + "cancel_request_nft_transfer"; 
+                
+                String c = bftMap.remove(cancelRequest).toString();
+                
+                if (c.equals("0")){
+                	System.out.println("Can't cancel that request!");
+                } else {
+                	System.out.println("Request cancelled!");
+                }
+
+            } else if (cmd.equalsIgnoreCase("PROCESS_NFT_TRANSFER")) {
+                int nftId = 0;
+                
+                try {
+                	nftId = Integer.parseInt(console.readLine("Enter the nft id: "));
+                } catch (NumberFormatException e) {
+                	System.out.println("Invalid input: The ID is supposed to be an integer!"); 
+                }
+                
+                int buyerId = 0;
+                try {
+                	buyerId = Integer.parseInt(console.readLine("Enter the buyer id: "));
+                } catch (NumberFormatException e) {
+                	System.out.println("Invalid input: The value is supposed to be an integer!"); 
+                }
+                
+                String accept = console.readLine("Do you accept the transfer? (True/False)");
+            
+                String transferRequest = clientId + "|" + nftId + "|" + buyerId + "|" + accept + "|" + "process_nft_transfer" ;
+
+                String p = bftMap.process_nft_transfer(random_key, transferRequest).toString();
+                random_key = random.nextInt(10000);
+
+                if (p.equals("0")) {
+                    System.out.println("You are not the owner of this NFT!");
+                } else if (p.equals("1")){
+                	System.out.println("There is no request on your NFT!");
+                } else if (p.equals("2")){
+                	System.out.println("ERROR! Coins don't belong to buyer!");
+                }else if (p.equals("3")){
+                	System.out.println("Error!");
+                }else if (p.equals("4")){
+                	System.out.println("Offer declined!");
+                }else {
+                    System.out.println("Transfer successful");
+                }
                 
             } else if (cmd.equalsIgnoreCase("EXIT")) {
 

@@ -59,12 +59,12 @@ public class BFTMapServer<K, V> extends DefaultSingleRecoverable {
                 	
                 	//only clients with id 
                 	if(k[0].equals("4")) {
-                		V v = replicaMap.put(request.getKey(), request.getValue());
-                        if(v != null) {
-                            response.setValue(v);
-                        }else {
-                        	response.setValue(request.getKey());
-                        }
+                		replicaMap.put(request.getKey(), request.getValue());
+                		
+                        response.setValue(request.getKey());
+                        return BFTMapMessage.toBytes(response);
+                	}else {
+                		response.setValue(0);
                         return BFTMapMessage.toBytes(response);
                 	}
                 	
@@ -115,13 +115,9 @@ public class BFTMapServer<K, V> extends DefaultSingleRecoverable {
                 		if (sender_value > 0) {
                 			V sender_coin = (V) (s[0] + "|" + sender_value + "|" + "coin"); 
                     		                            
-                    		V newCoin = replicaMap.put(key, sender_coin);
+                    		replicaMap.put(key, sender_coin);
+                            response.setValue(key);
 
-                    		if(newCoin != null) {
-                                response.setValue(newCoin);
-                            }else {
-                            	response.setValue(key);
-                            }
                 		}
                 		response.setValue(key);
                         return BFTMapMessage.toBytes(response);
@@ -154,12 +150,9 @@ public class BFTMapServer<K, V> extends DefaultSingleRecoverable {
                         
                     }else {
                     	
-                    	V n = replicaMap.put(request.getKey(), request.getValue());
-                        if(n != null) {
-                            response.setValue(n);
-                        }else {
-                            response.setValue(request.getKey());
-                        }
+                    	replicaMap.put(request.getKey(), request.getValue());
+                    	
+                        response.setValue(request.getKey());
                         return BFTMapMessage.toBytes(response);
                     }
                     
@@ -167,15 +160,22 @@ public class BFTMapServer<K, V> extends DefaultSingleRecoverable {
                     String[] r = request.getValue().toString().split("\\|");
                     String clientId = r[0];
                     
-                    V nft_id = replicaMap.get(Integer.parseInt(r[1]));
-                    String [] nft_val = nft_id.toString().split("\\|");
-                    String UserId = nft_val[0];
-                    
-                    //check if client owns NFT
-                    if (clientId.equals(UserId)){
-                        response.setValue(0);
-                        return BFTMapMessage.toBytes(response);
-                    }
+                    try {
+                    	V nft_id = replicaMap.get(Integer.parseInt(r[1]));
+                        String [] nft_val = nft_id.toString().split("\\|");
+                        String UserId = nft_val[0];
+                        
+                        //check if client owns NFT
+                        if (clientId.equals(UserId)){
+                            response.setValue(0);
+                            return BFTMapMessage.toBytes(response);
+                        }
+                        
+                    } catch(NullPointerException e) {
+            			response.setValue(4); 
+        				return BFTMapMessage.toBytes(response);
+          
+            		}
 
                     String[] nft_coins = r[2].split(",");
                     int sumCoins = 0;
@@ -210,25 +210,159 @@ public class BFTMapServer<K, V> extends DefaultSingleRecoverable {
                         
                         if(isValidIndex(nft_info, 5) && nft_info[5].equals("nft_request")){
                         	if(clientId.equals(UserID)) {
-                        		response.setValue("3");
+                        		response.setValue(3);
                                 return BFTMapMessage.toBytes(response);
                         	}                    
                     }
-                    System.out.println(sumCoins);
+                        
                     if (sumCoins >= Integer.parseInt(r[3])){
                     	
-                        V v = replicaMap.put(request.getKey(), request.getValue());
-                        if(v != null) {
-                            response.setValue(v);
-                        }else {
-                        	response.setValue(request.getKey());
-                        }
+                        replicaMap.put(request.getKey(), request.getValue());
                         
+                        response.setValue(request.getKey());
                         return BFTMapMessage.toBytes(response);
                     }
-                    response.setValue("2");
+                    response.setValue(2);
                     return BFTMapMessage.toBytes(response);
                 }
+                    
+                case CANCEL_REQUEST_NFT_TRANSFER:
+                    
+                    String[] cancel = request.getValue().toString().split("\\|");
+                    
+                    for(Map.Entry<K,V> x : replicaMap.entrySet()){
+                        String[] cancelInfo = x.getValue().toString().split("\\|");
+                        
+                        if (cancel[0].equals(cancelInfo[0])){
+                            if(cancel[1].equals(cancelInfo[1])){
+                            	System.out.println("teste1");
+                            	if (isValidIndex(cancelInfo,5) && cancelInfo[5].equals("nft_request")) {
+                                	System.out.println("teste2");
+                                    replicaMap.remove(x.getKey());  
+                                    request.setValue(1);
+                                    return BFTMapMessage.toBytes(request);
+                            	}
+                            }
+                        }
+                    }
+            		request.setValue(0);
+                    return BFTMapMessage.toBytes(request);
+                    
+                case PROCESS_NFT_TRANSFER:                    
+                    String[] requestProcess = request.getValue().toString().split("\\|");
+                    
+                    String[] nft = replicaMap.get(Integer.parseInt(requestProcess[1])).toString().split("\\|");
+                    
+                    int client = Integer.parseInt(requestProcess[0]);
+                    int nft_owner = Integer.parseInt(nft[0]);
+                    
+                    if (client != nft_owner) {
+                    	//Not owner
+                        request.setValue(0);
+                        return BFTMapMessage.toBytes(request);
+                    }
+                    
+                    String offerValue = "";
+                    String[] all_coins = new String[50];
+                    String requestId = "";
+                    boolean hasRequest = false;
+                    
+                    for(Map.Entry<K,V> x : replicaMap.entrySet()){                        
+                    	String[] info = x.getValue().toString().split("\\|");
+
+                        if(isValidIndex(info,5) && info[5].equals("nft_request") && info[0].equals(requestProcess[2]) && info[1].equals(requestProcess[1])){
+                        	requestId = x.getKey().toString();
+                        	System.out.println(requestId);
+                        	hasRequest = true;
+                            offerValue = info[3]; 
+                        	all_coins = info[2].split(",");
+                        }
+                    }
+  
+                    if (!hasRequest) {
+                    	//No requests
+                    	request.setValue(1);
+                        return BFTMapMessage.toBytes(request);
+                    }
+                    
+                    if(requestProcess[3].equalsIgnoreCase("True")){
+                        int sum_Coins = 0;
+                        for (String coin : all_coins){ 
+                        	try {
+                        		String [] info = replicaMap.get(Integer.parseInt(coin)).toString().split("\\|");  
+                        		
+                        		// Check if the coin belongs to the client
+                    			if (Integer.parseInt(requestProcess[2]) != Integer.parseInt(info[0])) {
+                                	
+                    				request.setValue(2); 
+                    				return BFTMapMessage.toBytes(request);
+                                	
+                    			}else {
+                    				sum_Coins += Integer.parseInt(info[1]);
+                    			}
+                        	} catch(NullPointerException e) {
+                        		request.setValue(3); 
+                				return BFTMapMessage.toBytes(request);
+                  
+                    		}
+                        }
+
+                        int intRequestValue = Integer.parseInt(offerValue);
+
+                        if (sum_Coins == intRequestValue){
+
+                		    V clientCoin = (V) (client + "|" + offerValue + "|" + "coin");
+                		    replicaMap.put(request.getKey(), clientCoin);
+
+
+                            for (String usedCoins : all_coins) {
+                                replicaMap.remove(Integer.parseInt(usedCoins));
+                            }
+                            
+                            replicaMap.remove(Integer.parseInt(requestProcess[1]));
+                            
+                            V newNFT = (V) (requestProcess[2] + "|" + nft[1] + "|" + nft[2] + "|" + "nft"); 
+                            K newNFTKey =(K) Integer.valueOf(Integer.parseInt(requestProcess[1]));
+
+                            replicaMap.put(newNFTKey , newNFT);
+                            replicaMap.remove(Integer.parseInt(requestId));
+                            
+                            request.setValue(request.getKey());
+                            return BFTMapMessage.toBytes(request);
+
+
+                        } else if(sum_Coins > intRequestValue){
+                            int remaining_value = sum_Coins - intRequestValue;
+
+                		    V clientCoin = (V) (client + "|" + offerValue + "|" + "coin");
+                		    replicaMap.put(request.getKey(), clientCoin);
+
+                            for (String usedCoins : all_coins) {
+                                replicaMap.remove(Integer.parseInt(usedCoins));
+                            }
+
+                		    V buyerCoin = (V) (requestProcess[2] + "|" + remaining_value + "|" + "coin"); 
+                		    K coinKey = (K) Integer.valueOf(Integer.valueOf(request.getKey().toString())+1000);
+                		    replicaMap.put(coinKey, buyerCoin);
+
+                            V newNFT = (V) (requestProcess[2] + "|" + nft[1] + "|" + nft[2] + "|" +"nft"); 
+                            K newNFTKey = (K) Integer.valueOf(Integer.parseInt(requestProcess[1]));
+                            
+                            replicaMap.put(newNFTKey , newNFT);
+                            replicaMap.remove(Integer.parseInt(requestId));
+
+                            request.setValue(request.getKey());
+                            return BFTMapMessage.toBytes(request);
+
+                        }
+
+                    }else {
+                        replicaMap.remove(Integer.parseInt(requestId));
+                    	request.setValue(4);
+                        return BFTMapMessage.toBytes(request);
+                    }
+
+                    return BFTMapMessage.toBytes(request);    
             }
             
 

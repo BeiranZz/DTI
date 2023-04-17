@@ -235,7 +235,65 @@ public class BFTMap<K, V> implements Map<K, V> {
 
     @Override
     public V remove(Object key) {
-        throw new UnsupportedOperationException("You are supposed to implement this method :)");
+    	byte[] rep;
+        try {
+     	   BFTMapMessage<K,V> request = new BFTMapMessage<>();
+       	
+     	   request.setType(BFTMapRequestType.CANCEL_REQUEST_NFT_TRANSFER);
+
+     	   request.setValue(key);
+
+     	   //invokes BFT-SMaRt
+     	   rep = serviceProxy.invokeOrdered(BFTMapMessage.toBytes(request));
+        } catch (IOException e) {
+     	   logger.error("Failed to send PUT request");
+     	   return null;
+        }
+
+        if (rep.length == 0) {
+     	   return null;
+        }
+        try {
+     	   BFTMapMessage<K,V> response = BFTMapMessage.fromBytes(rep);
+     	   return response.getValue();
+        } catch (ClassNotFoundException | IOException ex) {
+     	   logger.error("Failed to deserialized response of PUT request");
+     	   return null;
+        }
+    }
+    
+    /**
+    *
+    * @param key The key associated to the value
+    * @param value Value to be added to the map
+    */
+    public V process_nft_transfer(K key, V value) {
+ 	   byte[] rep;
+        try {
+     	   BFTMapMessage<K,V> request = new BFTMapMessage<>();
+       	
+     	   request.setType(BFTMapRequestType.PROCESS_NFT_TRANSFER);
+
+     	   request.setKey(key);
+     	   request.setValue(value);
+
+     	   //invokes BFT-SMaRt
+     	   rep = serviceProxy.invokeOrdered(BFTMapMessage.toBytes(request));
+        } catch (IOException e) {
+     	   logger.error("Failed to send PUT request");
+     	   return null;
+        }
+
+        if (rep.length == 0) {
+     	   return null;
+        }
+        try {
+     	   BFTMapMessage<K,V> response = BFTMapMessage.fromBytes(rep);
+     	   return response.getValue();
+        } catch (ClassNotFoundException | IOException ex) {
+     	   logger.error("Failed to deserialized response of PUT request");
+     	   return null;
+        }
     }
 
     @Override
