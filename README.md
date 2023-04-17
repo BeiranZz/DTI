@@ -3,7 +3,7 @@
 Trabalho realizado por:
 
 Pedro Santos nº 53677  
-Diogo Toupa nº 60382 
+Diogo Toupa nº 60382  
 Rui Silva nº 57643 
 
 # Instructions:
